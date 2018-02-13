@@ -11,5 +11,6 @@ setup(name='feldman_cousins',
       install_requires=[
         'scipy',
         'numpy',
-        'matplotlib'],
+        'matplotlib',
+        'click'],
       zip_safe=False)
