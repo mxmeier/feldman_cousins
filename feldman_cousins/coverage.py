@@ -16,9 +16,9 @@ def test_coverage_poisson(n_s, n_b, n_obs, lower_limit, upper_limit, N):
     Parameters
     ----------
     n_s : float
-        Signal expectation for the poisson distribution.
+        Signal expectation for the Poisson distribution.
     n_b : float
-        Background expectation for the poisson distribution.
+        Background expectation for the Poisson distribution.
     n_obs : array-like
         Array of observed values to determine the coverage for.
     lower_limit : array-like
@@ -65,7 +65,6 @@ def test_coverage_poisson(n_s, n_b, n_obs, lower_limit, upper_limit, N):
                           'do not have corresponding limits given: {}'.format(
                            unique_n[~isin]))
 
-
     # Count the number of pseudo experiments contained in
     # the intervals
     n_contained = 0
@@ -76,8 +75,9 @@ def test_coverage_poisson(n_s, n_b, n_obs, lower_limit, upper_limit, N):
             if not_covered_matter == False:
                 continue
             else:
-                raise ValueError('Found an interval that matters, but coverage for it ' +
-                                 'could not be evaluated!')
+                raise ValueError(
+                    'Found an interval that matters, but coverage for it ' +
+                    'could not be evaluated!')
         if ns_contained[idx] == True:
             n_contained += n_cts[i]
 

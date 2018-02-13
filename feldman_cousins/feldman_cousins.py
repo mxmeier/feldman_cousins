@@ -13,21 +13,39 @@ from matplotlib import pyplot as plt
 from _utility import fix_monotonicity
 
 
-def feldman_cousins_acceptance_interval_from_pdf(pdf, n_b, alpha):
+def feldman_cousins_acceptance_interval_from_pdf(pdf, mus, n_b=0, alpha=0.9):
     '''
-    Acceptance intervals for the Feldman-Cousins approach given a sampled pdf.
+    Acceptance intervals for the Feldman-Cousins approach given a
+    non-analytical pdf.
+
+    The Likelihood ranking suggested by Feldman and Cousins is performed
+    empirical here. This calculation fails when mu_best is not sampled for the
+    given PDF. In the case of a simple Poisson PDF with background this starts
+    to fail as soon as n_obs - n_b is greater than the scanned range in mu.
+
     For more information see `Feldman-Cousins`_.
+
     Parameters
     ----------
     pdf: array-like, shape (len(mus), len(n_obs))
+        PDF values calculated on a (mu, n_obs) grid.
+        n_obs is assumed to be integer values and to start from 0.
+    n_b: float, default: 0
+        The value of n_b used to calculate the corresponding pdf can be passed
+        to the function and will just be returned, can be used to safely
+        identify processes after parallel processing.
     alpha: float
         The desired confidence level of the constructed confidence belt.
+
     Returns
     -------
     lower_limit: array-like, shape(len(mus))
         The lower limits on `n_obs` for each `mu`.
     upper_limit: array-like, shape(len(mus))
         The upper limits on `n_obs` for each `mu`.
+    n_b: float
+        Returns the n_b value given to the function without any modification.
+
     .. _Feldman-Cousins:
         https://arxiv.org/abs/physics/9711021
     '''
@@ -41,16 +59,6 @@ def feldman_cousins_acceptance_interval_from_pdf(pdf, n_b, alpha):
     # Rank all the values for each n_obs
     L_best = np.amax(pdf, axis=0)
     L_best[L_best == 0] = 1
-    L_best_emp = L_best
-
-    # print('L_best empirical:', L_best_emp)
-    # n_b = 2
-    # mu_best = [np.maximum(0, n_obs_i - n_b) for n_obs_i in n_obs]
-    # L_best = [scs.poisson.pmf(n_obs_i, mu_best_i + n_b) for (n_obs_i, mu_best_i) in zip(n_obs, mu_best)]
-
-    # print('L_best analytical:', np.array(L_best))
-
-    # print('Ratio:', L_best / L_best_emp)
 
     pdf_rescaled = pdf / L_best
 
@@ -59,12 +67,6 @@ def feldman_cousins_acceptance_interval_from_pdf(pdf, n_b, alpha):
 
         ranking = pdf_rescaled[mu_idx]
         indexes = np.argsort(ranking)[::-1]
-
-        # Set obviously wrong limits to nan, where
-        # the empirical ranking fails
-        # ct = np.count_nonzero(np.diff(indexes) == -1)
-        # if ct >= 20:
-        #     continue
 
         lower_limit_n[mu_idx] = n_obs[indexes[i]]
         upper_limit_n[mu_idx] = n_obs[indexes[i]]
@@ -94,10 +96,50 @@ def feldman_cousins_acceptance_interval_from_pdf(pdf, n_b, alpha):
     return lower_limit_n, upper_limit_n + n_bin_width, n_b
 
 
-def feldman_cousins_intervals_from_acceptance_intervals(n_obs, n_b, mus,
-                                                        lower_limit_n,
-                                                        upper_limit_n,
-                                                        fix_discrete_n_pathology=True):
+def feldman_cousins_intervals_from_acceptance_intervals(
+        n_obs, n_b, mus,
+        lower_limit_n,
+        upper_limit_n,
+        fix_discrete_n_pathology=True):
+    '''
+    Calculates confidence belts with the Feldman-Cousins approach
+    from arbitrary acceptance intervals.
+
+    For more information see `Feldman-Cousins`_.
+
+    Parameters
+    ----------
+    n_obs: array-like
+        Range of `n_obs` to scan while constructing the limits on
+        `n_obs` for each `mu`.
+    n_b: array-like
+        Number of background events. Parameter for the poissonian
+        distribution with background.
+    mus: array-like
+        Grid of `mu` values to contruct the limits on `n_obs` on.
+        As `n_b` gets bigger the grid needs to get finer to actually
+        populte every important `n_obs` value with an upper limit.
+    lower_limit_n: array-like, shape(len(mus))
+        Lower limit on n for each mu.
+    upper_limit_n: array-like, shape(len(mus))
+        Upper limit on n for each mu.
+    fix_discrete_n_pathology: bool, optional
+        If True, calculate the confidence belts for surrounding n_b to
+        correct for a pathology arising from the discreteness of n_obs
+        in the poissonian distribution, which causes some upper limits
+        to rise for rising n_b.
+
+    Returns
+    -------
+    lower_limit: array-like, shape(len(n_obs), len(n_b))
+        The lower limits on `mu` for each `n_obs`.
+    upper_limit: array-like, shape(len(n_obs), len(n_b))
+        The upper limitson `mu` for each `n_obs`.
+
+    .. _Feldman-Cousins:
+        https://arxiv.org/abs/physics/9711021
+    '''
+
     def fix_pathology(arr):
         for j in range(1, len(arr)):
             if arr[-(j + 1)] < arr[-j]:
@@ -134,9 +176,9 @@ def feldman_cousins_intervals_from_acceptance_intervals(n_obs, n_b, mus,
             lower_idx = lower_limit_n[:, b] == n
 
             if np.sum(lower_idx) == 0:
-                # warnings.warn(('The given `mus`-array is probably to coarse.' +
-                #                ' No upper limit found for `n_obs` = {}. ' +
-                #                'Setting the upper limit to inf.').format(n))
+                warnings.warn(('The given `mus`-array is probably to coarse.' +
+                               ' No upper limit found for `n_obs` = {}. ' +
+                               'Setting the upper limit to inf.').format(n))
                 upper_limit_mu[n, b] = np.inf
             else:
                 upper_limit_mu[n, b] = mus[lower_idx][-1]
@@ -157,6 +199,7 @@ def poissonian_feldman_cousins_acceptance_interval(n_obs, n_b, mus, alpha=0.9):
     Acceptance intervals for a poisson process with background for the Feldman-
     Cousins approach.
     For more information see `Feldman-Cousins`_.
+
     Parameters
     ----------
     n_obs: array-like
@@ -166,17 +209,19 @@ def poissonian_feldman_cousins_acceptance_interval(n_obs, n_b, mus, alpha=0.9):
         Number of background events. Parameter of the poissonian
         distribution with background.
     mus: array-like
-        Grid of `mu` values to contruct the limits on `n_obs` on.
+        Grid of `mu` values to construct the limits on `n_obs` on.
         As `n_b` gets bigger the grid needs to get finer to actually
-        populte every important `n_obs` value with an upper limit.
+        populate every important `n_obs` value with an upper limit.
     alpha: float
         The desired confidence level of the constructed confidence belt.
+
     Returns
     -------
     lower_limit: array-like, shape(len(mus), len(n_b))
         The lower limits on `n_obs` for each `mu`.
     upper_limit: array-like, shape(len(mus), len(n_b))
         The upper limits on `n_obs` for each `mu`.
+
     .. _Feldman-Cousins:
         https://arxiv.org/abs/physics/9711021
     '''
@@ -244,6 +289,7 @@ def poissonian_feldman_cousins_interval(n_obs, n_b,
     '''
     Calculates confidence belts with the Feldman-Cousins approach.
     For more information see `Feldman-Cousins`_.
+
     Parameters
     ----------
     n_obs: array-like
@@ -253,9 +299,9 @@ def poissonian_feldman_cousins_interval(n_obs, n_b,
         Number of background events. Parameter for the poissonian
         distribution with background.
     mus: array-like
-        Grid of `mu` values to contruct the limits on `n_obs` on.
+        Grid of `mu` values to construct the limits on `n_obs` on.
         As `n_b` gets bigger the grid needs to get finer to actually
-        populte every important `n_obs` value with an upper limit.
+        populate every important `n_obs` value with an upper limit.
     alpha: float
         The desired confidence level of the constructed confidence belt.
     fix_discrete_n_pathology: bool, optional
@@ -265,12 +311,14 @@ def poissonian_feldman_cousins_interval(n_obs, n_b,
         to rise with for rising n_b.
     n_jobs: int, optional
         Number of cores to calculate the n_b grid on.
+
     Returns
     -------
     lower_limit: array-like, shape(len(n_obs), len(n_b))
         The lower limits on `mu` for each `n_obs`.
     upper_limit: array-like, shape(len(n_obs), len(n_b))
-        The upper limitson `mu` for each `n_obs`.
+        The upper limits on `mu` for each `n_obs`.
+
     .. _Feldman-Cousins:
         https://arxiv.org/abs/physics/9711021
     '''
