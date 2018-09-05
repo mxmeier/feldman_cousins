@@ -344,7 +344,7 @@ def poissonian_feldman_cousins_interval(n_obs, n_b,
             max_nb = np.min(n_b) + 1
         else:
             max_nb = np.max(n_b)
-        n_b = np.arange(min_nb, max_nb + step_size, step_size)
+        n_b = np.arange(min_nb, max_nb + step_size / 2., step_size)
 
     lower_limit_n = np.zeros((len(mus), len(n_b)))
     upper_limit_n = np.zeros((len(mus), len(n_b)))
