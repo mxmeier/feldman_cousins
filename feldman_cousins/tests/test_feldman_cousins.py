@@ -21,8 +21,8 @@ def test_feldman_cousins_intervals(filename):
         fix_discrete_n_pathology=True,
         n_jobs=2)
 
-    lower_limits = lower_limits_mu[:, 200]
-    upper_limits = upper_limits_mu[:, 200]
+    lower_limits = lower_limits_mu[:, 0]
+    upper_limits = upper_limits_mu[:, 0]
 
     plt.plot(n_obs, lower_limits, drawstyle='steps-post', color='C0')
     plt.plot(n_obs, upper_limits, drawstyle='steps-post', color='C0')

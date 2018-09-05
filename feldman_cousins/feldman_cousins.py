@@ -339,8 +339,11 @@ def poissonian_feldman_cousins_interval(n_obs, n_b,
                     'n_b grid is probably too coarse!')
         else:
             step_size = 0.005
-        min_nb = np.maximum(0, np.min(n_b) - 1)
-        max_nb = np.max(n_b) + 1
+        min_nb = np.min(n_b)
+        if np.max(n_b) < min_nb + 1:
+            max_nb = np.min(n_b) + 1
+        else:
+            max_nb = np.max(n_b)
         n_b = np.arange(min_nb, max_nb + step_size, step_size)
 
     lower_limit_n = np.zeros((len(mus), len(n_b)))
