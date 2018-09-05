@@ -13,7 +13,7 @@ from matplotlib import pyplot as plt
 from _utility import fix_monotonicity
 
 
-def feldman_cousins_acceptance_interval_from_pdf(pdf, mus, n_b=0, alpha=0.9):
+def feldman_cousins_acceptance_interval_from_pdf(pdf, n_b=0, alpha=0.9):
     '''
     Acceptance intervals for the Feldman-Cousins approach given a
     non-analytical pdf.
@@ -119,9 +119,9 @@ def feldman_cousins_intervals_from_acceptance_intervals(
         Grid of `mu` values to contruct the limits on `n_obs` on.
         As `n_b` gets bigger the grid needs to get finer to actually
         populte every important `n_obs` value with an upper limit.
-    lower_limit_n: array-like, shape(len(mus))
+    lower_limit_n: array-like, shape(len(mus)) or (len(mus), len(n_b))
         Lower limit on n for each mu.
-    upper_limit_n: array-like, shape(len(mus))
+    upper_limit_n: array-like, shape(len(mus)) or (len(mus), len(n_b))
         Upper limit on n for each mu.
     fix_discrete_n_pathology: bool, optional
         If True, calculate the confidence belts for surrounding n_b to
